@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <immintrin.h>
 #include <iomanip>
+#include <malloc.h>
 
 const size_t BUFFER_SIZE_BYTES = 1ULL * 1024ULL * 1024ULL * 1024ULL;
 const size_t ELEMENT_SIZE = sizeof(int64_t);
