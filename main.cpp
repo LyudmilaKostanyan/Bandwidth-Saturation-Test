@@ -9,7 +9,11 @@
 #include <cstdlib>
 #include <immintrin.h>
 #include <iomanip>
-#include <malloc.h>
+#ifdef _MSC_VER
+    #include <malloc.h>  // For _aligned_malloc on Windows
+#else
+    #include <stdlib.h>  // For aligned_alloc on Linux/macOS
+#endif
 
 const size_t BUFFER_SIZE_BYTES = 1ULL * 1024ULL * 1024ULL * 1024ULL;
 const size_t ELEMENT_SIZE = sizeof(int64_t);
@@ -19,6 +23,24 @@ const int NUM_THREADS = 17;
 std::atomic<int64_t> totalElementsProcessed(0);
 std::mutex throughputMutex;
 std::vector<double> threadThroughputs(NUM_THREADS, 0.0);
+
+int64_t* allocate_aligned_memory(size_t alignment, size_t size) {
+    #ifdef _MSC_VER
+        // On Windows, use _aligned_malloc
+        return (int64_t*)_aligned_malloc(size, alignment);
+    #else
+        // On Linux/macOS, use aligned_alloc
+        return (int64_t*)aligned_alloc(alignment, size);
+    #endif
+}
+
+void free_aligned_memory(int64_t* ptr) {
+    #ifdef _MSC_VER
+        _aligned_free(ptr);  // Windows
+    #else
+        free(ptr);  // Linux/macOS
+    #endif
+}
 
 void memoryTest(int threadId, int64_t* data) {
     auto start = std::chrono::high_resolution_clock::now();
@@ -85,7 +107,7 @@ void memoryTest(int threadId, int64_t* data) {
 
 int main() {
 
-    int64_t* data = (int64_t*)aligned_alloc(32, NUM_ELEMENTS * sizeof(int64_t));
+    int64_t* data = (int64_t*)allocate_aligned_memory(32, NUM_ELEMENTS * sizeof(int64_t));
     if (!data) {
         std::cerr << "Memory allocation failed!" << std::endl;
         return 1;
@@ -119,6 +141,6 @@ int main() {
     std::cout << "| Efficiency               | " << std::setw(10) << efficiency << " %    |\n";
     std::cout << "+--------------------------+-----------------+\n";
 
-    free(data);
+    free_aligned_memory(data);
     return 0;
 }
