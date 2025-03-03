@@ -34,70 +34,48 @@ jobs:
             c_compiler: cl
 
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Set reusable strings
-      id: strings
-      shell: bash
-      run: echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
-    - name: Configure CMake
-      shell: bash
-      run: cmake -S . -B build
-
-    - name: Build
-      shell: bash
-      run: cmake --build build
-
-    - name: Run Executable
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      shell: bash
-      run: |
-        executable="main"
-        if [ "$RUNNER_OS" == "Windows" ]; then
-          executable_path="./${{ matrix.build_type }}/${executable}.exe"
-        else
-          executable_path="./${executable}"
-        fi
-        echo "Checking if executable exists: $executable_path"
-        if [ -f "$executable_path" ]; then
-          echo "Executable found, running it"
-          "$executable_path" || echo "Exit code: $?"
-        else
-          echo "Executable not found: $executable_path"
-          exit 1
-        fi
-
-    - name: Debug with GDB (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      shell: bash
-      run: |
-        sudo apt-get update && sudo apt-get install -y gdb
-        executable="./main"
-        if [ -f "$executable" ]; then
-          echo "run" > gdb_commands.txt
-          echo "bt full" >> gdb_commands.txt
-          echo "Running GDB:"
-          gdb --batch --quiet -x gdb_commands.txt "$executable"
-        fi
-      continue-on-error: true
-
-    - name: Debug with GDB (Windows)
-      if: matrix.os == 'windows-latest' && matrix.c_compiler == 'g++'
-      shell: bash
-      run: |
-        # Assuming MinGW or Cygwin is installed, or GDB is available in the path
-        gdb_path="C:/MinGW/bin/gdb.exe"
-        executable="main.exe"
+      - uses: actions/checkout@v4
+  
+      - name: Set reusable strings
+        id: strings
+        shell: bash
+        run: echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+  
+          - name: Configure CMake project (Linux & macOS)
+          if: runner.os != 'Windows'
+          run: |
+            cd build
+            cmake ..
+          
+      - name: Configure CMake project (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          cd build
+          cmake ..
+    
+      - name: Build C++ code (Linux & macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cd build
+          cmake --build .
         
-        # Check if GDB is available
-        if command -v "$gdb_path" &> /dev/null; then
-          echo "GDB found, running it"
-          echo "run" > gdb_commands.txt
-          echo "bt full" >> gdb_commands.txt
-          "$gdb_path" --batch --quiet -x gdb_commands.txt "$executable"
-        else
-          echo "GDB not found, skipping debugging"
-        fi
-      continue-on-error: true
+      - name: Build C++ code (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          cd build
+          cmake --build .
+  
+      - name: Run tests (Linux & macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cd build
+          ./main
+  
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          cd build
+          ./main.exe
