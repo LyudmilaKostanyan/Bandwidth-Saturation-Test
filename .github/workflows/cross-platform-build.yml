@@ -14,11 +14,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         build_type: [Release]
-        c_compiler: [gcc, clang, g++]
+        c_compiler: [gcc, clang, cl]
         include:
           - os: windows-latest
-            c_compiler: g++
-            cpp_compiler: g++
+            c_compiler: cl
+            cpp_compiler: cl
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
@@ -27,7 +27,9 @@ jobs:
             cpp_compiler: clang++
         exclude:
           - os: windows-latest
-            c_compiler: cl
+            c_compiler: gcc
+          - os: windows-latest
+            c_compiler: clang
           - os: ubuntu-latest
             c_compiler: cl
 
@@ -41,11 +43,11 @@ jobs:
 
     - name: Configure CMake
       shell: bash
-      run: cmake -B "${{ steps.strings.outputs.build-output-dir }}" -DCMAKE_CXX_COMPILER="${{ matrix.cpp_compiler }}" -DCMAKE_C_COMPILER="${{ matrix.c_compiler }}" -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" -S "${{ github.workspace }}"
+      run: cmake -S . -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER="${{ matrix.cpp_compiler }}" -DCMAKE_C_COMPILER="${{ matrix.c_compiler }}" -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}"
 
     - name: Build
       shell: bash
-      run: cmake --build "${{ steps.strings.outputs.build-output-dir }}" --config "${{ matrix.build_type }}"
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config "${{ matrix.build_type }}"
 
     - name: Run Executable
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
@@ -79,3 +81,23 @@ jobs:
           echo "Running GDB:"
           gdb --batch --quiet -x gdb_commands.txt "$executable"
         fi
+      continue-on-error: true
+
+    - name: Debug with GDB (Windows)
+      if: matrix.os == 'windows-latest' && matrix.c_compiler == 'g++'
+      shell: bash
+      run: |
+        # Assuming MinGW or Cygwin is installed, or GDB is available in the path
+        gdb_path="C:/MinGW/bin/gdb.exe"
+        executable="main.exe"
+        
+        # Check if GDB is available
+        if command -v "$gdb_path" &> /dev/null; then
+          echo "GDB found, running it"
+          echo "run" > gdb_commands.txt
+          echo "bt full" >> gdb_commands.txt
+          "$gdb_path" --batch --quiet -x gdb_commands.txt "$executable"
+        else
+          echo "GDB not found, skipping debugging"
+        fi
+      continue-on-error: true
