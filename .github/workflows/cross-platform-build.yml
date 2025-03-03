@@ -53,7 +53,7 @@ jobs:
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       shell: bash
       run: |
-        executable="bandwidth_test"
+        executable="main"
         if [ "$RUNNER_OS" == "Windows" ]; then
           executable_path="./${{ matrix.build_type }}/${executable}.exe"
         else
@@ -74,7 +74,7 @@ jobs:
       shell: bash
       run: |
         sudo apt-get update && sudo apt-get install -y gdb
-        executable="./bandwidth_test"
+        executable="./main"
         if [ -f "$executable" ]; then
           echo "run" > gdb_commands.txt
           echo "bt full" >> gdb_commands.txt
