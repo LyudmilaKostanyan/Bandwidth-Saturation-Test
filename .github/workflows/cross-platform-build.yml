@@ -91,32 +91,6 @@ jobs:
       run: |
         cd build
         ./main.exe
-    # - name: Configure CMake
-    #   shell: bash
-    #   run: cmake -S . -B ${{ steps.strings.outputs.build-output-dir }}
-
-    # - name: Build
-    #   shell: bash
-    #   run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config "${{ matrix.build_type }}"
-
-    # - name: Run Executable
-    #   working-directory: ${{ steps.strings.outputs.build-output-dir }}
-    #   shell: bash
-    #   run: |
-    #     executable="main"
-    #     if [ "$RUNNER_OS" == "Windows" ]; then
-    #       executable_path="./${{ matrix.build_type }}/${executable}.exe"
-    #     else
-    #       executable_path="./${executable}"
-    #     fi
-    #     echo "Checking if executable exists: $executable_path"
-    #     if [ -f "$executable_path" ]; then
-    #       echo "Executable found, running it"
-    #       "$executable_path" || echo "Exit code: $?"
-    #     else
-    #       echo "Executable not found: $executable_path"
-    #       exit 1
-    #     fi
 
     - name: Debug with GDB (Linux)
       if: matrix.os == 'ubuntu-latest'

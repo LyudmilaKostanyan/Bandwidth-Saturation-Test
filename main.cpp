@@ -84,7 +84,7 @@ void memoryTest(int threadId, int64_t* data) {
 
 int main() {
 
-    int64_t* data = (int64_t*)std::aligned_alloc(32, NUM_ELEMENTS * sizeof(int64_t));
+    int64_t* data = (int64_t*)aligned_alloc(32, NUM_ELEMENTS * sizeof(int64_t));
     if (!data) {
         std::cerr << "Memory allocation failed!" << std::endl;
         return 1;
