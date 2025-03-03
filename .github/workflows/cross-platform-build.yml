@@ -1,8 +1,36 @@
-      - name: Check disk space (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
+name: Cross platform build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux & macOS)
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
-          Get-PSDrive C | Select-Object Used,Free
+          echo "Running on $RUNNER_OS"
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            brew install cmake gcc || echo "Homebrew install failed, but continuing if already installed."
+          else
+            sudo apt update && sudo apt install -y cmake g++
+          fi
+        timeout-minutes: 10  # Add timeout to catch long-running issues
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
@@ -10,42 +38,43 @@
         with:
           msystem: MINGW64
           update: false
-          install: mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-make  # Added make
+          install: mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc
         timeout-minutes: 20
         continue-on-error: true
 
-      - name: Debug MSYS2 failure (Windows)
+      - name: Debug failure (Windows)
         if: runner.os == 'Windows' && steps['Install dependencies (Windows)'].outcome == 'failure'
         shell: powershell
         run: |
           dir C:\hostedtoolcache\windows\msys2-installer\0.0.20250221\x64
-          if (Test-Path C:\hostedtoolcache\windows\msys2-installer\0.0.20250221\x64\base.exe) {
-            Write-Output "base.exe exists, size: $((Get-Item C:\hostedtoolcache\windows\msys2-installer\0.0.20250221\x64\base.exe).Length) bytes"
-          } else {
-            Write-Output "base.exe not found!"
-          }
+
+      - name: Create build directory (Linux & macOS)
+        if: runner.os != 'Windows'
+        run: mkdir -p build && echo "Build directory ready."
 
       - name: Create build directory (Windows)
         if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          mkdir -p build && echo "Build directory ready."
+        shell: bash
+        run: mkdir -p build && echo "Build directory ready."
 
-      - name: Verify MinGW tools (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
+      - name: Configure CMake project (Linux & macOS)
+        if: runner.os != 'Windows'
         run: |
-          which gcc
-          which g++
-          which mingw32-make
-          echo "PATH is: $PATH"
+          cd build
+          cmake ..
 
       - name: Configure CMake project (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
           cd build
-          cmake .. -G "MinGW Makefiles" -DCMAKE_MAKE_PROGRAM=mingw32-make -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+          cmake .. -G "MinGW Makefiles"
+
+      - name: Build C++ code (Linux & macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cd build
+          cmake --build .
 
       - name: Build C++ code (Windows)
         if: runner.os == 'Windows'
@@ -54,14 +83,15 @@
           cd build
           cmake --build .
 
+      - name: Run tests (Linux & macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cd build
+          ./main
+
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
           cd build
-          if [ -f "./main.exe" ]; then
-            ./main.exe
-          else
-            echo "Error: main.exe not found! Build may have failed."
-            exit 1
-          fi
+          ./main.exe
