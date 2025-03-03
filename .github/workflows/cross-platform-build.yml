@@ -20,17 +20,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check disk space (all platforms)
+        shell: ${{ runner.os == 'Windows' && 'powershell' || 'bash' }}
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            Get-PSDrive C | Select-Object Used,Free
+          else
+            df -h
+          fi
+
       - name: Install dependencies (Linux & macOS)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          echo "Running on $RUNNER_OS"
+          echo "Installing dependencies on $RUNNER_OS"
           if [ "$RUNNER_OS" == "macOS" ]; then
             brew install cmake gcc || echo "Homebrew install failed, but continuing if already installed."
           else
             sudo apt update && sudo apt install -y cmake g++
           fi
-        timeout-minutes: 10  # Add timeout to catch long-running issues
+        timeout-minutes: 10
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
@@ -39,26 +48,38 @@ jobs:
           msystem: MINGW64
           update: false
           install: mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc
+          cache: false  # Disable caching to avoid restoration issues
         timeout-minutes: 20
-        continue-on-error: true
+        continue-on-error: true  # Allow debugging on failure
 
-      - name: Debug failure (Windows)
+      - name: Debug MSYS2 failure (Windows)
         if: runner.os == 'Windows' && steps['Install dependencies (Windows)'].outcome == 'failure'
         shell: powershell
         run: |
+          Write-Output "MSYS2 setup failed. Checking environment..."
           dir C:\hostedtoolcache\windows\msys2-installer\0.0.20250221\x64
+          if (Test-Path C:\msys64) { 
+            Write-Output "MSYS2 root exists"
+            dir C:\msys64 
+          } else { 
+            Write-Output "MSYS2 root not found" 
+          }
 
       - name: Create build directory (Linux & macOS)
         if: runner.os != 'Windows'
-        run: mkdir -p build && echo "Build directory ready."
+        shell: bash
+        run: |
+          mkdir -p build && echo "Build directory ready on $RUNNER_OS"
 
       - name: Create build directory (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: mkdir -p build && echo "Build directory ready."
+        run: |
+          mkdir -p build && echo "Build directory ready on Windows"
 
       - name: Configure CMake project (Linux & macOS)
         if: runner.os != 'Windows'
+        shell: bash
         run: |
           cd build
           cmake ..
@@ -72,6 +93,7 @@ jobs:
 
       - name: Build C++ code (Linux & macOS)
         if: runner.os != 'Windows'
+        shell: bash
         run: |
           cd build
           cmake --build .
@@ -85,13 +107,24 @@ jobs:
 
       - name: Run tests (Linux & macOS)
         if: runner.os != 'Windows'
+        shell: bash
         run: |
           cd build
-          ./main
+          if [ -f "./main" ]; then
+            ./main
+          else
+            echo "Error: main not found! Build may have failed on $RUNNER_OS"
+            exit 1
+          fi
 
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
           cd build
-          ./main.exe
+          if [ -f "./main.exe" ]; then
+            ./main.exe
+          else
+            echo "Error: main.exe not found! Build may have failed on Windows"
+            exit 1
+          fi
