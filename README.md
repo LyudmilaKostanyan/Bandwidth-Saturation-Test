@@ -11,19 +11,6 @@ The test demonstrates the concept of memory bottlenecks, recalling the original 
 - The test will simulate high memory usage and demonstrate how the limited bandwidth can impact overall performance.
 - The results will show how multiple threads accessing the same buffer can cause contention, and how this contention is a result of the shared memory bus in a system architecture.
 
-## Features
-1. **Multiple Threads**:  
-   The program uses multiple threads to perform continuous read and write operations on a large buffer, simulating memory saturation.
-
-2. **Throughput Data**:  
-   The program collects throughput data, displaying the number of MBs transferred per second during the test.
-
-3. **Memory Bottleneck Simulation**:  
-   By saturating the memory bus, the program demonstrates how memory contention occurs and how the bandwidth limitation becomes a bottleneck.
-
-4. **Von Neumann Bottleneck Explanation**:  
-   The project explains the Von Neumann bottleneck, where the shared data and instruction pathways limit overall throughput.
-
 ## Example Output
 
 The output of the program will show the throughput in MB/s for different thread configurations. An example output might look like this:
