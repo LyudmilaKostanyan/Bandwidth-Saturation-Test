@@ -49,7 +49,7 @@ jobs:
 
       - name: Configure CMake (Windows)
         if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
+        shell: msys2 -c
         run: |
           cd build
           cmake -G "MinGW Makefiles" -DCMAKE_CXX_FLAGS="-mavx2" ..
@@ -58,7 +58,7 @@ jobs:
         run: |
           cd build
           cmake --build .
-        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 -c {0}' || 'bash' }}
 
       - name: Run tests (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -68,7 +68,7 @@ jobs:
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
+        shell: msys2 -c
         run: |
           cd build
           ./main.exe
