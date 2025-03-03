@@ -29,14 +29,32 @@ jobs:
             sudo apt update && sudo apt install -y cmake g++
           fi
 
+      - name: Check disk space (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Get-PSDrive C | Select-Object Used,Free
+
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: false  # Skip updating the package database to speed up the step
+          update: false
           install: mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc
-        timeout-minutes: 15  # Allow up to 15 minutes for this step
+        timeout-minutes: 20  # Increased to 20 minutes for safety
+        continue-on-error: true  # Allow debugging even if this fails
+
+      - name: Debug MSYS2 failure (Windows)
+        if: runner.os == 'Windows' && steps['Install dependencies (Windows)'].outcome == 'failure'
+        shell: powershell
+        run: |
+          dir C:\hostedtoolcache\windows\msys2-installer\0.0.20250221\x64
+          if (Test-Path C:\hostedtoolcache\windows\msys2-installer\0.0.20250221\x64\base.exe) {
+            Write-Output "base.exe exists, size: $((Get-Item C:\hostedtoolcache\windows\msys2-installer\0.0.20250221\x64\base.exe).Length) bytes"
+          } else {
+            Write-Output "base.exe not found!"
+          }
 
       - name: Create build directory (Linux & macOS)
         if: runner.os != 'Windows'
@@ -58,7 +76,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd build
-          cmake .. -G "MinGW Makefiles"  # Explicitly specify MinGW Makefiles for consistency
+          cmake .. -G "MinGW Makefiles"
 
       - name: Build C++ code (Linux & macOS)
         if: runner.os != 'Windows'
@@ -84,4 +102,9 @@ jobs:
         shell: msys2 {0}
         run: |
           cd build
-          ./main.exe
+          if [ -f "./main.exe" ]; then
+            ./main.exe
+          else
+            echo "Error: main.exe not found! Build may have failed."
+            exit 1
+          fi
