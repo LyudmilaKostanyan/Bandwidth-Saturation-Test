@@ -41,6 +41,22 @@ jobs:
       shell: bash
       run: echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Install dependencies (Linux & macOS)
+      if: runner.os != 'Windows'
+      run: |
+        if [ $RUNNER_OS == "macOS" ]; then
+          brew install cmake gcc
+        else
+          sudo apt update && sudo apt install -y cmake g++
+        fi
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: mingw64
+        install: mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc
+
     - name: Configure CMake project (Linux & macOS)
       if: runner.os != 'Windows'
       run: |
