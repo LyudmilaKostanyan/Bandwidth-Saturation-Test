@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <immintrin.h>
 #include <iomanip>
-#ifdef _MSC_VER
+#ifdef _WIN32
     #include <malloc.h>  // For _aligned_malloc on Windows
 #else
     #include <stdlib.h>  // For aligned_alloc on Linux/macOS
@@ -25,7 +25,7 @@ std::mutex throughputMutex;
 std::vector<double> threadThroughputs(NUM_THREADS, 0.0);
 
 int64_t* allocate_aligned_memory(size_t alignment, size_t size) {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         // On Windows, use _aligned_malloc
         return (int64_t*)_aligned_malloc(size, alignment);
     #else
@@ -35,7 +35,7 @@ int64_t* allocate_aligned_memory(size_t alignment, size_t size) {
 }
 
 void free_aligned_memory(int64_t* ptr) {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         _aligned_free(ptr);  // Windows
     #else
         free(ptr);  // Linux/macOS
