@@ -2,9 +2,11 @@ name: Cross platform build
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   build:
@@ -66,14 +68,6 @@ jobs:
       run: |
         cd build
         cmake --build .
-    
-    # - name: Configure CMake
-    #   shell: bash
-    #   run: cmake -S . -B build
-
-    # - name: Build
-    #   shell: bash
-    #   run: cmake --build build
 
     - name: Run tests (Linux & macOS)
       if: runner.os != 'Windows'
@@ -87,37 +81,3 @@ jobs:
       run: |
         cd build
         ./main.exe
-
-    # - name: Debug with GDB (Linux)
-    #   if: matrix.os == 'ubuntu-latest'
-    #   working-directory: ${{ steps.strings.outputs.build-output-dir }}
-    #   shell: bash
-    #   run: |
-    #     sudo apt-get update && sudo apt-get install -y gdb
-    #     executable="./main"
-    #     if [ -f "$executable" ]; then
-    #       echo "run" > gdb_commands.txt
-    #       echo "bt full" >> gdb_commands.txt
-    #       echo "Running GDB:"
-    #       gdb --batch --quiet -x gdb_commands.txt "$executable"
-    #     fi
-    #   continue-on-error: true
-
-    # - name: Debug with GDB (Windows)
-    #   if: matrix.os == 'windows-latest' && matrix.c_compiler == 'g++'
-    #   shell: bash
-    #   run: |
-    #     # Assuming MinGW or Cygwin is installed, or GDB is available in the path
-    #     gdb_path="C:/MinGW/bin/gdb.exe"
-    #     executable="main.exe"
-        
-    #     # Check if GDB is available
-    #     if command -v "$gdb_path" &> /dev/null; then
-    #       echo "GDB found, running it"
-    #       echo "run" > gdb_commands.txt
-    #       echo "bt full" >> gdb_commands.txt
-    #       "$gdb_path" --batch --quiet -x gdb_commands.txt "$executable"
-    #     else
-    #       echo "GDB not found, skipping debugging"
-    #     fi
-    #   continue-on-error: true
