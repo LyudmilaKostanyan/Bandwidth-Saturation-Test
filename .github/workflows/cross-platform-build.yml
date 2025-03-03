@@ -12,9 +12,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]  # Exclude macos-latest (ARM64) for now
-        # If macOS x86_64 is needed, use macos-13 (Intel-based), but it’s slower
-    
+        os: [ubuntu-latest, windows-latest]
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -34,41 +33,40 @@ jobs:
           msystem: MINGW64
           update: true
           install: mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc
-        timeout-minutes: 10  # Prevent premature cancellation
+        timeout-minutes: 10
 
       - name: Create build directory
-        run: |
-          mkdir -p build
+        run: mkdir -p build
         shell: bash
 
       - name: Configure CMake (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
           cd build
-          cmake -DCMAKE_CXX_FLAGS="-mavx2" ..
+          cmake ..
 
       - name: Configure CMake (Windows)
         if: matrix.os == 'windows-latest'
-        shell: msys2 -c
+        shell: msys2 {0}
         run: |
           cd build
-          cmake -G "MinGW Makefiles" -DCMAKE_CXX_FLAGS="-mavx2" ..
+          cmake -G "MinGW Makefiles" ..
 
       - name: Build C++ code
         run: |
           cd build
           cmake --build .
-        shell: ${{ matrix.os == 'windows-latest' && 'msys2 -c {0}' || 'bash' }}
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
 
       - name: Run tests (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
           cd build
-          ./main
+          ./main  # Убедитесь, что имя соответствует вашему CMakeLists.txt
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
-        shell: msys2 -c
+        shell: msys2 {0}
         run: |
           cd build
-          ./main.exe
+          ./main.exe  # Убедитесь, что имя соответствует вашему CMakeLists.txt
