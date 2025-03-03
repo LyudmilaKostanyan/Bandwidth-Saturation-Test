@@ -8,26 +8,23 @@
 #include <numeric>
 #include <cstdlib>
 #include <immintrin.h>
+#include <iomanip>
 
-const size_t BUFFER_SIZE_BYTES = 4ULL * 1024ULL * 1024ULL * 1024ULL;  // 4 GB
+const size_t BUFFER_SIZE_BYTES = 1ULL * 1024ULL * 1024ULL * 1024ULL;
 const size_t ELEMENT_SIZE = sizeof(int64_t);
 const size_t NUM_ELEMENTS = BUFFER_SIZE_BYTES / ELEMENT_SIZE;
-const int NUM_THREADS = 8;  // Fixed to 8
+const int NUM_THREADS = 17;
 
 std::atomic<int64_t> totalElementsProcessed(0);
 std::mutex throughputMutex;
 std::vector<double> threadThroughputs(NUM_THREADS, 0.0);
 
 void memoryTest(int threadId, int64_t* data) {
-    // std::cout << "Thread " << threadId << " starting: " << std::endl;
-
     auto start = std::chrono::high_resolution_clock::now();
 
     size_t dataPerThread = NUM_ELEMENTS / NUM_THREADS;
     size_t startIdx = threadId * dataPerThread;
     size_t endIdx = (threadId == NUM_THREADS - 1) ? NUM_ELEMENTS : (threadId + 1) * dataPerThread;
-
-    // std::cout << "Thread " << threadId << " range: " << startIdx << " to " << endIdx << std::endl;
 
     __m256i one = _mm256_set1_epi64x(1);
     __m256i sum = _mm256_setzero_si256();
@@ -73,7 +70,7 @@ void memoryTest(int threadId, int64_t* data) {
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
 
-    double throughputMB = (dataPerThread * sizeof(int64_t)) / (1024.0 * 1024.0) * 2;  // Read + write
+    double throughputMB = (dataPerThread * sizeof(int64_t)) / (1024.0 * 1024.0) * 2;
     double throughputPerSecond = throughputMB / duration.count();
 
     {
@@ -81,15 +78,11 @@ void memoryTest(int threadId, int64_t* data) {
         threadThroughputs[threadId] = throughputPerSecond;
     }
 
-    // std::cout << "Thread " << threadId << " finished: " << throughputPerSecond << " MB/s" << std::endl;
-
     volatile int64_t dummy = _mm256_extract_epi64(sum, 0);
     (void)dummy;
 }
 
 int main() {
-    std::cout << "Threads: " << NUM_THREADS << "\n";
-    std::cout << "Allocating " << BUFFER_SIZE_BYTES / (1024.0 * 1024.0) << " MB\n";
 
     int64_t* data = (int64_t*)std::aligned_alloc(32, NUM_ELEMENTS * sizeof(int64_t));
     if (!data) {
@@ -97,11 +90,9 @@ int main() {
         return 1;
     }
 
-    std::cout << "Filling memory...\n";
     std::fill(data, data + NUM_ELEMENTS, 0);
 
     std::vector<std::thread> threads;
-    std::cout << "Starting threads...\n";
 
     for (int i = 0; i < NUM_THREADS; ++i) {
         threads.emplace_back(memoryTest, i, data);
@@ -114,12 +105,19 @@ int main() {
     double maxThroughput = *std::max_element(threadThroughputs.begin(), threadThroughputs.end());
     double totalThroughput = std::accumulate(threadThroughputs.begin(), threadThroughputs.end(), 0.0);
     double theoreticalBandwidth = 68160.0;
+    double efficiency = (totalThroughput / theoreticalBandwidth) * 100;
 
-    std::cout << "Max thread throughput: " << maxThroughput << " MB/s\n";
-    std::cout << "Total throughput: " << totalThroughput << " MB/s\n";
-    std::cout << "Theoretical bandwidth: " << theoreticalBandwidth << " MB/s\n";
-    std::cout << "Efficiency (total/theoretical): " << (totalThroughput / theoreticalBandwidth) * 100 << "%\n";
+    std::cout << "\nPerformance Results:\n";
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "+--------------------------+-----------------+\n";
+    std::cout << "| Metric                   | Value           |\n";
+    std::cout << "+--------------------------+-----------------+\n";
+    std::cout << "| Max Thread Throughput    | " << std::setw(10) << maxThroughput << " MB/s |\n";
+    std::cout << "| Total Throughput         | " << std::setw(10) << totalThroughput << " MB/s |\n";
+    std::cout << "| Theoretical Bandwidth    | " << std::setw(10) << theoreticalBandwidth << " MB/s |\n";
+    std::cout << "| Efficiency               | " << std::setw(10) << efficiency << " %    |\n";
+    std::cout << "+--------------------------+-----------------+\n";
 
-    free(data);  // Use free with aligned_alloc
+    free(data);
     return 0;
 }
