@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies (Linux & macOS)
         if: runner.os != 'Windows'
         run: |
-          if [ $RUNNER_OS == "macOS" ]; then
+          if [ "$RUNNER_OS" == "macOS" ]; then
             brew install cmake gcc
           else
             sudo apt update && sudo apt install -y cmake g++
@@ -33,47 +33,39 @@ jobs:
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: mingw64
+          msystem: MINGW64
+          update: false  # Skip updating the package database to speed up the step
           install: mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc
+        timeout-minutes: 15  # Allow up to 15 minutes for this step
 
       - name: Create build directory (Linux & macOS)
         if: runner.os != 'Windows'
-        run: |
-          if [ ! -d "build" ]; then
-            mkdir build
-          else
-            echo "Build directory already exists."
-          fi
+        run: mkdir -p build && echo "Build directory ready."
 
       - name: Create build directory (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: |
-          if [ ! -d "build" ]; then
-            mkdir build
-          else
-            echo "Build directory already exists."
-          fi
+        run: mkdir -p build && echo "Build directory ready."
 
       - name: Configure CMake project (Linux & macOS)
         if: runner.os != 'Windows'
         run: |
           cd build
           cmake ..
-        
+
       - name: Configure CMake project (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
           cd build
-          cmake ..
+          cmake .. -G "MinGW Makefiles"  # Explicitly specify MinGW Makefiles for consistency
 
       - name: Build C++ code (Linux & macOS)
         if: runner.os != 'Windows'
         run: |
           cd build
           cmake --build .
-        
+
       - name: Build C++ code (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
