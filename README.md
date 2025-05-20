@@ -33,28 +33,28 @@ As more threads are added, the throughput gradually decreases, illustrating the 
 
 ### Why Memory Saturation Happens
 - **Single Memory Bus**: Modern systems, especially those based on the Von Neumann architecture, suffer from the limitation of having a single memory bus shared by both data and instructions. This creates a bottleneck, especially when multiple threads are accessing memory simultaneously.
-  
+
 - **Thread Contention**: When multiple threads access the same memory regions, they contend for the bandwidth of the memory bus. This results in delays, reducing the overall throughput and performance of the system.
 
 - **Von Neumann Bottleneck**: The Von Neumann architecture, which uses a shared bus for both data and instructions, limits how quickly data can be transferred between the CPU and memory. As the number of threads increases, the system cannot keep up with the demand for data, leading to reduced performance.
 
 ## How to Compile and Run the Code
 
-1. **Clone the repository**:  
+1. **Clone the repository**:
    If you haven't cloned the repository yet, do so by running:
    ```bash
    git clone https://github.com/LyudmilaKostanyan/Bandwidth-Saturation-Test.git
    cd bandwidth-saturation-test
    ```
 
-2. **Build the project**:  
+2. **Build the project**:
    Once you're in the project directory, compile the code with:
    ```bash
    cmake -S . -B build
    cmake --build build
    ```
 
-3. **Run the compiled executable**:  
+3. **Run the compiled executable**:
    After compiling, you can run the program:
    ```bash
    cd build
