@@ -16,7 +16,7 @@
 
 using namespace std::chrono;
 
-const size_t BUFFER_SIZE = 2ULL * 1024ULL * 1024ULL * 1024ULL;
+const size_t BUFFER_SIZE = 1ULL * 1024ULL * 1024ULL * 1024ULL;
 const size_t STRIDE = 16;
 const size_t ELEMENT_SIZE = sizeof(int64_t);
 const size_t ELEMENTS = BUFFER_SIZE / ELEMENT_SIZE;
@@ -25,7 +25,6 @@ const unsigned NUM_THREADS = std::thread::hardware_concurrency();
 
 std::atomic<size_t> totalBytesProcessed(0);
 
-// Кроссплатформенная функция выделения выровненной памяти
 void* aligned_alloc_cross(size_t alignment, size_t size) {
 #if defined(_MSC_VER)
     return _aligned_malloc(size, alignment);
@@ -36,12 +35,10 @@ void* aligned_alloc_cross(size_t alignment, size_t size) {
     if (posix_memalign(&ptr, alignment, size) != 0) ptr = nullptr;
     return ptr;
 #else
-    // C++17 aligned_alloc (но не все реализации поддерживают)
     return std::aligned_alloc(alignment, size);
 #endif
 }
 
-// Кроссплатформенное освобождение памяти
 void aligned_free_cross(void* ptr) {
 #if defined(_MSC_VER)
     _aligned_free(ptr);
@@ -100,7 +97,7 @@ int main() {
 	for (auto& t : threads)
 		t.join();
 
-    aligned_free_cross(buffer); // Освобождаем память
+    aligned_free_cross(buffer);
 
 		auto endTime = steady_clock::now();
 	auto totalDuration = duration_cast<milliseconds>(endTime - startTime);

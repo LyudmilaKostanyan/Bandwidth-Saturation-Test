@@ -25,10 +25,10 @@ Performance Results:
 +--------------------------+-----------------+
 | Metric                   | Value           |
 +--------------------------+-----------------+
-| Max Thread Throughput    |    4732.65 MB/s |
-| Total Throughput         |   67496.45 MB/s |
+| Max Thread Throughput    |    6676.05 MB/s |
+| Total Throughput         |   53408.44 MB/s |
 | Theoretical Bandwidth    |   68160.00 MB/s |
-| Efficiency               |      99.03 %    |
+| Efficiency               |      78.36 %    |
 +--------------------------+-----------------+
 ```
 
@@ -43,27 +43,24 @@ As more threads are added, the throughput gradually decreases, illustrating the 
 
 ## Profiling with Intel VTune Profiler
 
-Intel VTune Profiler was used to analyze memory bandwidth and bottlenecks. Below are key findings and visualizations:
+Intel VTune Profiler was used to analyze memory bandwidth usage and identify performance bottlenecks.
 
 ### Bandwidth Utilization Histogram
 
-This graph displays the wall time associated with DRAM bandwidth usage levels:
+This histogram shows how much time was spent at different levels of DRAM bandwidth usage. In this high-efficiency run, the majority of the execution time falls into the **High** utilization range, confirming bandwidth saturation.
 
-![Bandwidth Utilization Histogram](./images/Bandwidth_plot.png)
+![Bandwidth Histogram](./images/Bandwidth_plot.png)
 
-* Most of the execution time falls within **Low** bandwidth utilization.
-* Indicates underutilization of memory bandwidth despite high thread count.
+### DRAM Bound and Execution Metrics
 
-### DRAM Bound Analysis
+VTune’s breakdown indicates that:
 
-Detailed view of memory-related stalls and loads:
+* **97.1% of elapsed time** is bound by **DRAM bandwidth**.
+* Indicates excellent DRAM utilization, but also a clear bottleneck at the memory subsystem.
 
-![Elapsed Time and Memory Bound Breakdown](./images/Bandwidth.png)
+![DRAM Bound Breakdown](./images/Bandwidth.png)
 
-* **85.7% of clockticks** are stalled due to **L1 and DRAM latency**.
-* **0% DRAM Bandwidth Bound** suggests that throughput bottleneck is not due to raw bandwidth limits but likely due to **access patterns** or **latency**.
-
-These results suggest the system is limited by access efficiency rather than absolute bandwidth availability. Optimization could include improving cache usage or reducing access contention.
+These results confirm that the test has successfully saturated the memory bus, pushing the system near its bandwidth limit.
 
 ## How to Compile and Run
 
