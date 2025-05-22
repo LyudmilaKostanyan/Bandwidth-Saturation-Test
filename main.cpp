@@ -6,6 +6,10 @@
 #include <atomic>
 #include <iomanip>
 #include <algorithm>
+#include <cstdlib>
+#if defined(_MSC_VER)
+#include <malloc.h>
+#endif
 #ifdef __AVX2__
 #include <immintrin.h>
 #endif
@@ -20,46 +24,68 @@ const int64_t NUM_ITERATIONS = 1000;
 const unsigned NUM_THREADS = std::thread::hardware_concurrency();
 
 std::atomic<size_t> totalBytesProcessed(0);
-alignas(64) std::vector<int64_t> buffer(ELEMENTS, 0);
+
+// Кроссплатформенная функция выделения выровненной памяти
+void* aligned_alloc_cross(size_t alignment, size_t size) {
+#if defined(_MSC_VER)
+    return _aligned_malloc(size, alignment);
+#elif defined(__MINGW32__)
+    return __mingw_aligned_malloc(size, alignment);
+#elif defined(__APPLE__) || defined(__linux__)
+    void* ptr = nullptr;
+    if (posix_memalign(&ptr, alignment, size) != 0) ptr = nullptr;
+    return ptr;
+#else
+    // C++17 aligned_alloc (но не все реализации поддерживают)
+    return std::aligned_alloc(alignment, size);
+#endif
+}
+
+// Кроссплатформенное освобождение памяти
+void aligned_free_cross(void* ptr) {
+#if defined(_MSC_VER)
+    _aligned_free(ptr);
+#elif defined(__MINGW32__)
+    __mingw_aligned_free(ptr);
+#else
+    free(ptr);
+#endif
+}
 
 void threadWorker(int threadId, int64_t* buf, size_t totalElements) {
-	size_t chunkSize = totalElements / NUM_THREADS;
-	size_t startIdx = threadId * chunkSize;
-	size_t endIdx = (threadId == NUM_THREADS - 1) ? totalElements : startIdx + chunkSize;
+    size_t chunkSize = totalElements / NUM_THREADS;
+    size_t startIdx = threadId * chunkSize;
+    size_t endIdx = (threadId == NUM_THREADS - 1) ? totalElements : startIdx + chunkSize;
 
-	size_t bytesProcessed = 0;
+    size_t bytesProcessed = 0;
 
 #ifdef __AVX2__
-	__m256i pattern = _mm256_set1_epi64x(0xDEADBEEFDEADBEEF);
-	for (int64_t iter = 0; iter < NUM_ITERATIONS; ++iter) {
-		size_t i = startIdx;
-		for (; i + STRIDE <= endIdx; i += STRIDE) {
-			__m256i read = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&buf[i]));
-			if (reinterpret_cast<uintptr_t>(&buf[i]) % 32 == 0)
-				_mm256_stream_si256(reinterpret_cast<__m256i*>(&buf[i]), pattern);
-			else
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(&buf[i]), pattern);
-			bytesProcessed += 64;
-		}
-		for (; i < endIdx; ++i) {
-			buf[i] = 0;
-			bytesProcessed += sizeof(int64_t);
-		}
-	}
+    __m256i pattern = _mm256_set1_epi64x(0xDEADBEEFDEADBEEF);
+    for (int64_t iter = 0; iter < NUM_ITERATIONS; ++iter) {
+        size_t i = startIdx;
+        for (; i + 4 <= endIdx; i += 4) {
+            _mm256_stream_si256(reinterpret_cast<__m256i*>(&buf[i]), pattern);
+            bytesProcessed += 32;
+        }
+    }
 #else
-	for (int64_t iter = 0; iter < NUM_ITERATIONS; ++iter) {
-		for (size_t i = startIdx; i < endIdx; i += STRIDE) {
-			int64_t val = buf[i];
-			buf[i] = val ^ 0xDEADBEEF;
-			bytesProcessed += 2 * sizeof(int64_t);
-		}
-	}
+    for (int64_t iter = 0; iter < NUM_ITERATIONS; ++iter) {
+        for (size_t i = startIdx; i < endIdx; ++i) {
+            buf[i] = 0xDEADBEEFDEADBEEF;
+            bytesProcessed += sizeof(int64_t);
+        }
+    }
 #endif
 
-	totalBytesProcessed.fetch_add(bytesProcessed, std::memory_order_relaxed);
+    totalBytesProcessed.fetch_add(bytesProcessed, std::memory_order_relaxed);
 }
 
 int main() {
+    int64_t* buffer = reinterpret_cast<int64_t*>(aligned_alloc_cross(32, BUFFER_SIZE));
+    if (!buffer) {
+        std::cerr << "Failed to allocate aligned buffer!" << std::endl;
+        return 1;
+    }
 	std::cout << "Hardware concurrency: " << NUM_THREADS << std::endl;
 
 	std::vector<std::thread> threads;
@@ -68,11 +94,13 @@ int main() {
 	auto startTime = steady_clock::now();
 
 	for (unsigned i = 0; i < NUM_THREADS; ++i) {
-		threads.emplace_back(threadWorker, i, buffer.data(), ELEMENTS);
+		threads.emplace_back(threadWorker, i, buffer, ELEMENTS);
 	}
 
 	for (auto& t : threads)
 		t.join();
+
+    aligned_free_cross(buffer); // Освобождаем память
 
 		auto endTime = steady_clock::now();
 	auto totalDuration = duration_cast<milliseconds>(endTime - startTime);

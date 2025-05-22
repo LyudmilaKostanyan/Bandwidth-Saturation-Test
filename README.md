@@ -7,13 +7,18 @@ The **Bandwidth Saturation Test** simulates memory saturation by utilizing multi
 The test demonstrates the concept of memory bottlenecks, recalling the original Von Neumann architecture's limitation where the same data bus is shared for both instructions and data, affecting overall system performance.
 
 ### Expected Outcome
-- The test is designed to show how memory throughput decreases when the memory bus becomes saturated.
-- The test will simulate high memory usage and demonstrate how the limited bandwidth can impact overall performance.
-- The results will show how multiple threads accessing the same buffer can cause contention, and how this contention is a result of the shared memory bus in a system architecture.
+
+* The test is designed to show how memory throughput decreases when the memory bus becomes saturated.
+* The test will simulate high memory usage and demonstrate how the limited bandwidth can impact overall performance.
+* The results will show how multiple threads accessing the same buffer can cause contention, and how this contention is a result of the shared memory bus in a system architecture.
+
+## Problem Description
+
+Memory bandwidth saturation occurs when the rate at which data can be read from or written to DRAM reaches its limit. In multi-threaded applications, excessive memory operations can lead to contention, especially when memory access patterns are not optimized.
+
+This test investigates how the available memory bandwidth is utilized and whether the system reaches the saturation point under increasing workloads.
 
 ## Example Output
-
-The output of the program will show the throughput in MB/s for different thread configurations. An example output might look like this:
 
 ```
 Performance Results:
@@ -29,40 +34,67 @@ Performance Results:
 
 As more threads are added, the throughput gradually decreases, illustrating the saturation of the memory bus.
 
-## Performance Considerations
+## Explanation of Output
 
-### Why Memory Saturation Happens
-- **Single Memory Bus**: Modern systems, especially those based on the Von Neumann architecture, suffer from the limitation of having a single memory bus shared by both data and instructions. This creates a bottleneck, especially when multiple threads are accessing memory simultaneously.
+* **Max Thread Throughput**: The highest throughput achieved by any single thread.
+* **Total Throughput**: Aggregate memory bandwidth used by all threads.
+* **Theoretical Bandwidth**: Maximum expected throughput based on system specification.
+* **Efficiency**: Ratio of achieved to theoretical bandwidth.
 
-- **Thread Contention**: When multiple threads access the same memory regions, they contend for the bandwidth of the memory bus. This results in delays, reducing the overall throughput and performance of the system.
+## Profiling with Intel VTune Profiler
 
-- **Von Neumann Bottleneck**: The Von Neumann architecture, which uses a shared bus for both data and instructions, limits how quickly data can be transferred between the CPU and memory. As the number of threads increases, the system cannot keep up with the demand for data, leading to reduced performance.
+Intel VTune Profiler was used to analyze memory bandwidth and bottlenecks. Below are key findings and visualizations:
 
-## How to Compile and Run the Code
+### Bandwidth Utilization Histogram
 
-1. **Clone the repository**:
-   If you haven't cloned the repository yet, do so by running:
-   ```bash
-   git clone https://github.com/LyudmilaKostanyan/Bandwidth-Saturation-Test.git
-   cd bandwidth-saturation-test
-   ```
+This graph displays the wall time associated with DRAM bandwidth usage levels:
 
-2. **Build the project**:
-   Once you're in the project directory, compile the code with:
-   ```bash
-   cmake -S . -B build
-   cmake --build build
-   ```
+![Bandwidth Utilization Histogram](./images/Bandwidth_plot.png)
 
-3. **Run the compiled executable**:
-   After compiling, you can run the program:
-   ```bash
-   cd build
-   ./main
-   ```
+* Most of the execution time falls within **Low** bandwidth utilization.
+* Indicates underutilization of memory bandwidth despite high thread count.
 
-## Explanation of Results
+### DRAM Bound Analysis
 
-The results will show how throughput is affected by the number of threads. Initially, with fewer threads, throughput may be high because the memory bus is not fully saturated. However, as more threads are introduced, throughput will gradually decrease, demonstrating the limitations of a shared memory bus.
+Detailed view of memory-related stalls and loads:
 
-The program will also display the total time taken for each thread configuration, allowing you to compare performance across different levels of parallelism. This comparison will help illustrate how the memory bandwidth becomes a bottleneck in high-load scenarios.
+![Elapsed Time and Memory Bound Breakdown](./images/Bandwidth.png)
+
+* **85.7% of clockticks** are stalled due to **L1 and DRAM latency**.
+* **0% DRAM Bandwidth Bound** suggests that throughput bottleneck is not due to raw bandwidth limits but likely due to **access patterns** or **latency**.
+
+These results suggest the system is limited by access efficiency rather than absolute bandwidth availability. Optimization could include improving cache usage or reducing access contention.
+
+## How to Compile and Run
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/LyudmilaKostanyan/Bandwidth-Saturation-Test.git
+cd Bandwidth-Saturation-Test
+```
+
+### 2. Build the Project
+
+Use CMake to build the project:
+
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+Ensure you have CMake and a C++ compiler (e.g., g++) installed.
+
+### 3. Run the Program
+
+#### For Windows Users
+
+```bash
+./build/main.exe
+```
+
+#### For Linux/macOS Users
+
+```bash
+./build/main
+```
